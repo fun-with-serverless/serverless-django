@@ -17,6 +17,8 @@ lint = "ruff --fix ."
 lint_ci = "ruff ."
 mypy = "mypy ."
 bandit = "bandit -r polls -b bandit-baseline.json"
+run-server = {shell = "cd polls && python manage.py runserver"}
+gate = ["black", "lint", "mypy", "bandit"]
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.12.0"

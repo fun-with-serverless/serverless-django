@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "serverless-django"
+version = "0.1.0"
+description = "Using the Lambda Web Adapter with a Django application"
+authors = ["Efi MK <efi.merdler@gmail.com>"]
+license = "Apache License Version 2.0, January 2004"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+django = "^4.2"
+
+[tool.poe.tasks]
+black = "black ."
+black_ci = "black --check ."
+lint = "ruff --fix ."
+lint_ci = "ruff ."
+mypy = "mypy ."
+bandit = "bandit -r polls -b bandit-baseline.json"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.12.0"
+mypy = "^1.2.0"
+black = "^23.3.0"
+ruff = "^0.0.261"
+bandit = "^1.7.5"
+
+[tool.ruff]
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+exclude = [
+"cdk.out"
+]
+
+[tool.black]
+extend-exclude = '''
+(
+    cdk\.out 
+)
+'''
+[tool.mypy]
+exclude = [
+"cdk.out"
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

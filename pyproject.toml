@@ -9,41 +9,40 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.9"
 django = "^4.2"
+gunicorn = "^20.1.0"
+whitenoise = "^6.4.0"
 
 [tool.poe.tasks]
 black = "black ."
 black_ci = "black --check ."
 lint = "ruff --fix ."
 lint_ci = "ruff ."
-mypy = "mypy ."
+mypy = {shell = "cd polls && mypy ."}
 bandit = "bandit -r polls -b bandit-baseline.json"
 run-server = {shell = "cd polls && python manage.py runserver"}
+run-production = {shell = "cd polls && gunicorn polls.wsgi:application"}
 gate = ["black", "lint", "mypy", "bandit"]
+
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.12.0"
-mypy = "^1.2.0"
+mypy = "1.1.1"
 black = "^23.3.0"
 ruff = "^0.0.261"
 bandit = "^1.7.5"
+django-stubs = {extras = ["compatible-mypy"], version = "^1.16.0"}
 
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-exclude = [
-"cdk.out"
-]
+
 
 [tool.black]
-extend-exclude = '''
-(
-    cdk\.out 
-)
-'''
+
 [tool.mypy]
-exclude = [
-"cdk.out"
-]
+plugins = ["mypy_django_plugin.main"]
+[tool.django-stubs]
+django_settings_module = "polls.polls.settings"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Polls application resources
+  
+Parameters:
+  dbUserName:
+    NoEcho: true
+    Type: String
+    Default: root
+  bastionAMI:
+    Type: String
+    Default: ami-0b5eea76982371e91
+  keyPair:
+    Type: String
+    Default: MyPrivateKey
+
+Globals:
+  Function:
+    Timeout: 150
+    Tags:
+      'lumigo:auto-trace': 'true'
+    
+Resources:
+# VPC related resources
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: django VPC
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: django PublicSubnet1
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: us-east-1a
+      Tags:
+        - Key: Name
+          Value: django PrivateSubnet1
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: us-east-1b
+      Tags:
+        - Key: Name
+          Value: django PrivateSubnet1
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security group for Bastion
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  InternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  
+  PublicSubne1tRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: django Bastion
+      ImageId: !Ref bastionAMI
+      InstanceType: t2.micro
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y postgresql
+          sudo yum install -y ec2-instance-connect
+          sudo yum install -y git
+          sudo yum install -y gcc make patch zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel
+          su - ec2-user 
+          cd $HOME
+          git clone https://github.com/aws-hebrew-book/serverless-django.git
+          curl https://pyenv.run | bash
+          echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+          echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+          echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+          source ~/.bashrc
+          pyenv install 3.9
+          pyenv global 3.9
+          curl -sSL https://install.python-poetry.org | python3 -
+          cd serverless-django
+          poetry install --only main
+          poetry self add 'poethepoet[poetry_plugin]'
+          
+          
+
+          
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref keyPair
+    DependsOn: RDSInstance
+      
+  # RDS related resources
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security group for RDS
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: django
+      Engine: postgres
+      MasterUsername: !Ref dbUserName
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBCredentials}:SecretString}}'
+      AllocatedStorage: "5"
+      DBInstanceClass: db.t4g.micro
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets available for the RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  # Save User name and password in SSM
+  DBCredentials:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: DJangoRDSCredentials
+      GenerateSecretString: 
+        PasswordLength: 16
+        ExcludePunctuation: true
+          
+  # The actual Lambda
+  DjangoLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for my function
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 5432
+
+  PollsApp:
+    Type: AWS::Serverless::Function
+    Properties:
+        PackageType: Image
+        MemorySize: 1024
+        VpcConfig:
+          SecurityGroupIds:
+            - !Ref DjangoLambdaSecurityGroup
+          SubnetIds:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+        Policies:
+          - AWSSecretsManagerGetSecretValuePolicy:
+              SecretArn: !Ref DBCredentials
+        Environment:
+            Variables:
+              PORT: 8080
+              DB_HOST: !GetAtt RDSInstance.Endpoint.Address
+              SSM_PASSWORD_NAME: !Ref DBCredentials
+              DB_USER: !Ref dbUserName
+        FunctionUrlConfig:
+            AuthType: NONE
+    Metadata:
+        DockerTag: v1
+        DockerContext: ./
+        Dockerfile: Dockerfile
+        
+Outputs:
+    PollsAppFunctionUrlEndpoint:
+      Description: "Polls Function URL Endpoint"
+      Value: !GetAtt PollsAppUrl.FunctionUrl
+    BastionPublicDns:
+      Description: The public DNS of the bastion host
+      Value: !GetAtt BastionHost.PublicDnsName
+    BastionPublicIp:
+      Description: The public IP of the bastion host
+      Value: !GetAtt BastionHost.PublicIp

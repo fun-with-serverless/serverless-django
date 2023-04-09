@@ -11,6 +11,8 @@ python = "^3.9"
 django = "^4.2"
 gunicorn = "^20.1.0"
 whitenoise = "^6.4.0"
+psycopg2-binary = "^2.9.6"
+aws-lambda-powertools = {extras = ["aws-sdk"], version = "^2.12.0"}
 
 [tool.poe.tasks]
 black = "black ."
@@ -20,7 +22,7 @@ lint_ci = "ruff ."
 mypy = {shell = "cd polls && mypy ."}
 bandit = "bandit -r polls -b bandit-baseline.json"
 run-server = {shell = "cd polls && python manage.py runserver"}
-run-production = {shell = "cd polls && gunicorn polls.wsgi:application"}
+run-production = {shell = "gunicorn polls.wsgi:application --bind 0.0.0.0:8000"}
 gate = ["black", "lint", "mypy", "bandit"]
 
 

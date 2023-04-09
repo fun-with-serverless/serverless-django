@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 from typing import List
+from aws_lambda_powertools.utilities import parameters
+from botocore.exceptions import NoRegionError
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,12 +78,19 @@ WSGI_APPLICATION = "polls.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+try :
+    password =  parameters.get_secret(os.environ.get("SSM_PASSWORD_NAME"))
+except NoRegionError:
+    password = os.environ.get("DB_PASSWORD")
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "django",
+        "USER": os.environ.get("DB_USER", "root"),
+        "PASSWORD": password,
+        "HOST": os.environ.get("DB_HOST", "localhost") ,
+        "PORT": "5432",
     }
 }
 

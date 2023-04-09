@@ -14,8 +14,10 @@ import os
 from pathlib import Path
 from typing import List
 from aws_lambda_powertools.utilities import parameters
-from botocore.exceptions import NoRegionError
+from aws_lambda_powertools import Logger
 
+
+logger = Logger()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,13 +26,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-(-bo_#84mrk++(05j_b$33f=gh3i7eq-xv3o+vo^a8eqhz8zcg"
+try :
+    SECRET_KEY =  parameters.get_secret(os.environ.get("DJANGO_SECRET_KEY"))
+except Exception:
+    SECRET_KEY = "django-insecure-(-bo_#84mrk++(05j_b$33f=gh3i7eq-xv3o+vo^a8eqhz8zcg"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
+
 
 ALLOWED_HOSTS: List[str] = []
+if os.environ.get("DJANGO_ALLOWED_HOSTS"):
+    ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
 
 
 # Application definition
@@ -80,7 +87,7 @@ WSGI_APPLICATION = "polls.wsgi.application"
 # Database
 try :
     password =  parameters.get_secret(os.environ.get("SSM_PASSWORD_NAME"))
-except NoRegionError:
+except Exception:
     password = os.environ.get("DB_PASSWORD")
 
 DATABASES = {

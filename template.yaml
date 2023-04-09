@@ -32,6 +32,14 @@ Resources:
       Tags:
         - Key: Name
           Value: django VPC
+  EIP:
+    Type: AWS::EC2::EIP
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      AllocationId: !GetAtt EIP.AllocationId
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
   VPCGatewayAttachment:
@@ -82,6 +90,32 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
+  
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
 
   InternetRoute:
     Type: AWS::EC2::Route
@@ -176,6 +210,12 @@ Resources:
       GenerateSecretString: 
         PasswordLength: 16
         ExcludePunctuation: true
+  DJangoSecretKey:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: DJangoSecretKey
+      GenerateSecretString: 
+        PasswordLength: 34
           
   # The actual Lambda
   DjangoLambdaSecurityGroup:
@@ -206,9 +246,11 @@ Resources:
               SecretArn: !Ref DBCredentials
         Environment:
             Variables:
-              PORT: 8080
+              PORT: 8000
               DB_HOST: !GetAtt RDSInstance.Endpoint.Address
               SSM_PASSWORD_NAME: !Ref DBCredentials
+              DJANGO_SECRET_KEY: !Ref DJangoSecretKey
+              DJANGO_DEBUG: "False"
               DB_USER: !Ref dbUserName
         FunctionUrlConfig:
             AuthType: NONE

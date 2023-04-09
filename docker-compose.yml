@@ -11,6 +11,7 @@ services:
       DB_USER: myuser
       DB_PASSWORD: mypassword
       DB_HOST: db
+      DJANGO_DEBUG: "True"
   db:
     image: postgres
     environment:

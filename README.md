@@ -98,9 +98,11 @@ poetry shell
 * Run `docker-compose up` and you are good to go.
 
 ## Behind the scenes
+### Lambda Web Adapter
 Django for Python operates differently from AWS Lambda, as Django functions as a traditional web server that waits for external connections, while Lambda is event-based. To bridge the gap between these two operation types, the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) extension is required. This extension serves as a mediator, translating the http request coming from API Gateway or Lambda URL into a web request that is done against the internal guinicorn process.
 ![image](https://user-images.githubusercontent.com/110536677/231006553-291de4a2-44a8-4622-bcef-fb7cdb894bc2.png)
 
+### Consuming AWS Services
 When migrating an application to the cloud, it presents an excellent opportunity to leverage other cloud services. In this example, we utilize AWS Secret Manager to store the database password and the Django secret key. To retrieve the secret values and integrate them into the Django app, we employ [Lambda Power Tools](https://awslabs.github.io/aws-lambda-powertools-python/2.12.0/utilities/parameters/#fetching-secrets) , simplifying the process of securely accessing these sensitive pieces of information.
 
 One of the challenges when using traditional web applications that rely on SQL databases is the requirement to be within a VPC. By default, a Lambda function within a private subnet cannot access the internet and, therefore, cannot access AWS services. There are two ways to address this issue:
@@ -108,6 +110,13 @@ One of the challenges when using traditional web applications that rely on SQL d
 1. Utilize an Internet Gateway and NAT to enable compute resources in the private subnet to access the internet.
 2. Use [VPC endpoints](https://docs.aws.amazon.com/whitepapers/latest/aws-privatelink/what-are-vpc-endpoints.html), as Secret Manager supports [VPC endpoints](https://docs.aws.amazon.com/secretsmanager/latest/userguide/vpc-endpoint-overview.html).
 The current solution opts for the first option due to its simplicity; however, it is less secure because it exposes the Lambda function to the internet rather than limiting access to specific AWS services.
+
+### Serving Static Files
+Django is an all-inclusive framework that not only handles backend processes but also supports frontend server-side rendering. This means that web pages can be rendered using the framework, even when developing Single Page Applications (SPAs) and using Django as a REST backend. One issue that requires attention is static file handling, such as serving JS or CSS files.
+<img width="950" alt="image" src="https://user-images.githubusercontent.com/110536677/231078369-42bd25e9-2c1b-450c-9a55-a51624a8b354.png">
+
+
+AWS recommends managing static files using S3 and CloudFront. One approach is to use [django-storages](https://github.com/jschneier/django-storages), define S3 as a storage backend, and then set the S3 as the source for the CloudFront distribution. Alternatively, you can serve static files directly through the web server (using Gunicorn and the AWS Lambda Adapter), which is simpler and, in cases where only the admin panel needs support, is often preferable. To serve static files directly through the web server, simply use Django [WhiteNoise](https://whitenoise.readthedocs.io/en/latest/) and add it as middleware.
 
 
 ## Contributing

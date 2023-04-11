@@ -95,7 +95,7 @@ poetry shell
 * Try `https://<lambda host>/admin` and login using the super user credentials you just created.
 
 ### Running the app locally
-* The application use `docker-compose` to run the application locally.
+* The application uses `docker-compose` to run the application locally.
 * Run `docker-compose up` and you are good to go.
 
 ## Behind the scenes

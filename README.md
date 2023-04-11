@@ -87,6 +87,7 @@ poetry shell
 ```
 * The migration script requires DB user, password and host. The user is the one you supplied during `sam deploy --guided`, the host is one of AWS SAM outputs and the password is stored in the [SecretManager console](https://us-east-1.console.aws.amazon.com/secretsmanager/secret?name=DJangoRDSCredentials&region=us-east-1)
 <img width="1302" alt="image" src="https://user-images.githubusercontent.com/110536677/231000112-beb6dae3-5bc9-4d3a-9494-e544a913f805.png">
+
 * Navigate to the `polls` directory
 * Run `DB_USER=root DB_PASSWORD=<pass> DB_HOST=<host> python manage.py migrate`. This will create relevant tables.
 * Next is creating admin user. Run `DB_USER=root DB_PASSWORD=<pass> DB_HOST=<host> python manage.py createsuperuser`.

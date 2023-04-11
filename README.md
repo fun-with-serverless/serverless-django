@@ -35,7 +35,7 @@
         <li><a href="#running-the-app-locally">Running the app locally</a></li>
       </ul>
     </li>
-     <a href="#behind-the-scenes">Behind the scenes</a>
+      <li><a href="#behind-the-scenes">Behind the scenes</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>

@@ -103,6 +103,18 @@ poetry shell
 Django for Python operates differently from AWS Lambda, as Django functions as a traditional web server that waits for external connections, while Lambda is event-based. To bridge the gap between these two operation types, the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) extension is required. This extension serves as a mediator, translating the http request coming from API Gateway or Lambda URL into a web request that is done against the internal guinicorn process.
 ![image](https://user-images.githubusercontent.com/110536677/231006553-291de4a2-44a8-4622-bcef-fb7cdb894bc2.png)
 
+### LWA -> Gunicorn -> Django
+[Gunicorn](https://gunicorn.org/), short for Green Unicorn, is a Python Web Server Gateway Interface (WSGI) HTTP server that serves Python web applications by managing the communication between the web server and the application.
+
+Django does not include a production-ready web server by default. The built-in development server provided by Django is intended for local development and testing, but it is not designed to handle the performance requirements and security considerations of production environments. That’s where Gunicorn comes in. By integrating Gunicorn with a Django application, developers can deploy their web applications in production.
+
+AWS Lambda does not provide a direct web application interface; instead, services like API Gateway and Lambda URL convert HTTP requests into Lambda event payloads. Gunicorn, however, is not designed to communicate in this format. This is where LWA proves valuable, as it acts as a bridge, translating Lambda events received from API Gateway and Lambda URL into HTTP requests compatible with Gunicorn.
+
+Due to AWS Lambda’s design, which allows processing of only one request at a time, it is necessary to configure Gunicorn with a single listener when setting it up for use with Lambda.
+```
+CMD ["gunicorn", "polls.wsgi:application", "-w=1", "-b=0.0.0.0:8000"]
+```
+
 ### Consuming AWS Services
 When migrating an application to the cloud, it presents an excellent opportunity to leverage other cloud services. In this example, we utilize AWS Secret Manager to store the database password and the Django secret key. To retrieve the secret values and integrate them into the Django app, we employ [Lambda Power Tools](https://awslabs.github.io/aws-lambda-powertools-python/2.12.0/utilities/parameters/#fetching-secrets) , simplifying the process of securely accessing these sensitive pieces of information.
 
